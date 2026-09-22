@@ -35,10 +35,19 @@ iptables_delete_redirect() {
 iptables_add_redirect() {
     local dport=$1
     local to_port=$2
+    local ipt
     echo "Adding REDIRECT firewall rule: $dport => $to_port"
     iptables_delete_redirect "$dport" "$to_port"
-    iptables -t nat -A PREROUTING -p tcp --dport "$dport" -j REDIRECT --to-port "$to_port"
-    ip6tables -t nat -A PREROUTING -p tcp --dport "$dport" -j REDIRECT --to-port "$to_port"
+    for ipt in iptables ip6tables; do
+        # e.g. in a container whose host has not loaded (ip6)table_nat, the
+        # nat table can't be used; skip that family rather than failing, the
+        # fence is still reachable on $to_port
+        if ! $ipt -t nat -n -L PREROUTING >/dev/null 2>&1; then
+            echo "WARNING: $ipt nat table unavailable, skipping REDIRECT rule: $dport => $to_port" >&2
+            continue
+        fi
+        $ipt -t nat -A PREROUTING -p tcp --dport "$dport" -j REDIRECT --to-port "$to_port"
+    done
 }
 
 iptables_unensure_accept() {
