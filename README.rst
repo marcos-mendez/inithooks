@@ -379,6 +379,119 @@ common these days however it is hoped that it will be supported in the not too
 distant future.
 
 
+Declarative preseeding
+----------------------
+
+Instead of writing /etc/inithooks.conf by hand, an instance can be described
+in /etc/inithooks.yaml. At the start of the first boot, the firstboot hook
+00declarative validates the description, resolves the secrets it refers to
+and writes /etc/inithooks.conf from it. Every later hook reads the same
+variables it has always read, so nothing else changes.
+
+The path can be changed with INITHOOKS_DECL in /etc/default/inithooks. If
+/etc/inithooks.yaml does not exist, or if /etc/inithooks.conf already exists
+and is not empty, the hook does nothing and the conf file wins. Unlike the
+conf file, the description is not blanked at the end of the first boot: it
+holds references to secrets, not the secrets themselves, and it stays on the
+instance as a record of what the instance was asked to be.
+
+Example::
+
+    version: 1
+
+    instance:
+      hostname: blog
+      fqdn: blog.example.org
+
+    network:
+      managed_by: host
+      interfaces:
+        eth0:
+          ipv6:
+            method: static
+            address: 2001:db8:1::10/64
+            gateway: fe80::1
+          ipv4:
+            method: none
+      nameservers:
+        - 2001:4860:4860::8888
+
+    secrets:
+      root_password:
+        file: /etc/inithooks.secrets.d/root_password
+      db_password:
+        generate: true
+      app_password:
+        file: /etc/inithooks.secrets.d/app_password
+
+    app:
+      email: admin@example.org
+      domain: blog.example.org
+      options: {}
+
+    hub:
+      api_key: skip
+
+    security:
+      alerts: admin@example.org
+      updates: force
+
+    first_login_wizard: false
+
+    preseed: {}
+
+Keys and the variables they produce::
+
+    instance.hostname           HOSTNAME
+    instance.fqdn               FQDN
+    secrets.root_password       ROOT_PASS
+    secrets.db_password         DB_PASS
+    secrets.app_password        APP_PASS
+    app.email                   APP_EMAIL
+    app.domain                  APP_DOMAIN
+    app.options.<key>           APP_<KEY>
+    hub.api_key                 HUB_APIKEY
+    security.alerts             SEC_ALERTS
+    security.updates            SEC_UPDATES
+    first_login_wizard: true    AUTO_RUN=TRUE
+    network.*                   IP_CONFIG, IP_ADDRESS, IP_NETMASK, IP_GW,
+                                IP_DNS1, IP_DNS2
+    preseed.<KEY>               <KEY>, exported as written
+
+Notes:
+
+    - version is required and must be 1. An unknown top level key is an
+      error; keys under app.options and preseed are not checked.
+
+    - A secret is a mapping with exactly one of file or generate. A secret
+      file is read as bytes, one trailing newline is stripped, and it must
+      be mode 0600 or stricter and owned by root. generate is meant for
+      db_password: a generated value is never shown, so it is refused for
+      root_password and app_password unless first_login_wizard is true.
+
+    - Values are shell quoted, so a password containing spaces, quotes or a
+      dollar sign survives being sourced.
+
+    - network.managed_by: host (the default in containers, where the host
+      writes the interface configuration) means the reader writes no
+      addresses. It compares the declared addresses with the live ones and
+      logs an error if they differ, without failing the run.
+      network.managed_by: file maps the IPv4 settings onto the IP_*
+      variables read by 01ipconfig; static IPv6 addresses cannot be written
+      to /etc/network/interfaces yet and are refused.
+
+    - tls.acme is accepted and validated, but no certificate is requested
+      yet; use confconsole for that.
+
+The description can be validated before it is used::
+
+    /usr/lib/inithooks/bin/declarative.py --check /etc/inithooks.yaml
+    /usr/lib/inithooks/bin/declarative.py --render /etc/inithooks.yaml
+
+--render prints the conf file that would be written, with the secrets
+masked.
+
+
 List of initialization hooks and preseeding configuration parameters
 --------------------------------------------------------------------
 
