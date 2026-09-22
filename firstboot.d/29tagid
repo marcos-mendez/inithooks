@@ -26,5 +26,8 @@ if ! grep -q ajax.turnkeylinux.org $INITFENCE_INDEX; then
 EOF
 fi
 
-# reload init-fence to pick up the updated index
-systemctl reload turnkey-init-fence
+# reload init-fence to pick up the updated index (if it is not running there
+# is nothing to reload; it reads the index when it starts)
+if systemctl is-active --quiet turnkey-init-fence; then
+    systemctl reload turnkey-init-fence
+fi
