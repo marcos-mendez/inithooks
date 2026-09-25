@@ -2,9 +2,15 @@
 
 # firstboot network interfaces file generation - runs non-interactively.
 # - config can be customized via inithooks conf file (i.e. preseed)
+# - decisions and file rendering live in lib/ipconfig.sh
+
+INITHOOKS_DEFAULT="${INITHOOKS_DEFAULT:-/etc/default/inithooks}"
+INTERFACES="${INTERFACES:-/etc/network/interfaces}"
 
 # shellcheck source=default/inithooks
-source /etc/default/inithooks
+source "$INITHOOKS_DEFAULT"
+# shellcheck source=lib/ipconfig.sh
+source "$INITHOOKS_PATH/lib/ipconfig.sh"
 
 fatal() { echo "fatal $*" >&2; exit 1; }
 
@@ -17,30 +23,17 @@ if [[ -z "$IP_CONFIG" ]]; then
     exit 0
 fi
 
-case "$IP_CONFIG" in
-    manual|static|dhcp)
-        : # known/valid value, do nothing
-        ;;
-    *)
-        fatal "Invalid: IP_CONFIG='$IP_CONFIG' - valid values: manual|static|dhcp"
-        ;;
-esac
+ipconfig_valid_config "$IP_CONFIG" \
+    || fatal "Invalid: IP_CONFIG='$IP_CONFIG' - valid values: manual|static|dhcp"
 
-if ! [[ -e /etc/network/interfaces ]]; then
-    fatal "/etc/network/interfaces file not found"
+if ! [[ -e $INTERFACES ]]; then
+    fatal "$INTERFACES file not found"
 fi
 
-
-if [[ "$(turnkey-version -n)" == "lxc" ]]; then
-    # LXC app not currently being built, but leaving for now...
-    IP_IFACE="br0"
-else
-    IP_IFACE="eth0"
-fi
+IP_IFACE=$(ipconfig_iface "$(turnkey-version -n)")
 
 # if IP_CONFIG is not changed avoid a interface redundant reconfiguration
-if grep --quiet --no-messages "iface $IP_IFACE inet $IP_CONFIG" \
-        /etc/network/interfaces; then
+if ipconfig_unchanged "$INTERFACES" "$IP_IFACE" "$IP_CONFIG"; then
     exit 0
 fi
 
@@ -48,38 +41,17 @@ fi
 # between manual, static or dhcp so use 'ip' instead
 ip link set $IP_IFACE down
 
-HOSTNAME_LINE="    hostname $(head -1 /etc/hostname)"
+HOST_NAME=$(head -1 /etc/hostname)
 
-# keep the header confconsole looks for, otherwise it refuses to edit the file
-cat > /etc/network/interfaces <<EOF
-# UNCONFIGURED INTERFACES
-# remove the above line if you edit this file
-
-auto lo
-iface lo inet loopback
-
-auto $IP_IFACE
-iface $IP_IFACE inet $IP_CONFIG
-$HOSTNAME_LINE
-EOF
+ipconfig_render_head "$IP_IFACE" "$IP_CONFIG" "$HOST_NAME" > "$INTERFACES"
 
 if [[ "$IP_CONFIG" == "static" ]]; then
-    [[ -n "$IP_ADDRESS" ]] || fatal "IP_CONFIG=static requires IP_ADDRESS"
-    [[ -n "$IP_NETMASK" ]] || fatal "IP_CONFIG=static requires IP_NETMASK"
-    {
-        echo "    address $IP_ADDRESS"
-        echo "    netmask $IP_NETMASK"
-        [[ -z "$IP_GW" ]] || echo "    gateway $IP_GW"
-        dns=$(echo "$IP_DNS1 $IP_DNS2" | xargs)
-        [[ -z "$dns" ]] || echo "    dns-nameservers $dns"
-    } >> /etc/network/interfaces
+    error=$(ipconfig_check_static "$IP_ADDRESS" "$IP_NETMASK") || fatal "$error"
+    ipconfig_render_static "$IP_ADDRESS" "$IP_NETMASK" "$IP_GW" "$IP_DNS1" "$IP_DNS2" \
+        >> "$INTERFACES"
 fi
 
-# like confconsole, only IPv4 is configured here; keep IPv6 on (SLAAC/DHCPv6)
-cat >> /etc/network/interfaces <<EOF
-iface $IP_IFACE inet6 dhcp
-$HOSTNAME_LINE
-EOF
+ipconfig_render_inet6 "$IP_IFACE" "$HOST_NAME" >> "$INTERFACES"
 
 ifup --all --exclude=lo
 
