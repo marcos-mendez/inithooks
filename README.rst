@@ -522,6 +522,10 @@ secret-regeneration hooks which will run regardless.
 
 Common to all appliances::
 
+    01ipconfig*             IP_CONFIG               [ dhcp | static | manual ]
+                            IP_ADDRESS, IP_NETMASK, IP_GW, IP_DNS1, IP_DNS2
+                            IP6_CONFIG              [ dhcp | static | manual ]
+                            IP6_ADDRESS, IP6_GW, IP6_DNS1, IP6_DNS2
     15regen-sslcert         DH_BITS                 [ 1024 | 2048 | 4096 ]
     29preseed               INITFENCE               [ SKIP ]
     30rootpass*             ROOT_PASS
@@ -532,6 +536,46 @@ Common to all appliances::
 
 
 Notes:
+
+    - 01ipconfig writes /etc/network/interfaces for eth0 (br0 in an LXC
+      build) from the IP_* and IP6_* keys and brings the interface up. It
+      does nothing unless IP_CONFIG or IP6_CONFIG is set.
+
+      IP_CONFIG selects the IPv4 method. With static, IP_ADDRESS and
+      IP_NETMASK are required; IP_GW, IP_DNS1 and IP_DNS2 are optional.
+
+      IP6_CONFIG selects the IPv6 method and defaults to dhcp, which keeps
+      IPv6 on SLAAC or DHCPv6 as the image ships it. With static,
+      IP6_ADDRESS is required and carries the prefix length; IP6_GW is
+      optional (a link-local gateway such as fe80::1 is accepted); IP6_DNS1
+      and IP6_DNS2 are optional resolvers. Every IP6_* value must be an
+      IPv6 address: an IPv4 address, a missing prefix length, a multicast
+      or loopback address is a fatal error and nothing is written. When
+      only IP6_* keys are set, IPv4 stays on dhcp.
+
+      A static IPv6 address with IPv4 left on dhcp::
+
+          cat>/etc/inithooks.conf<<EOF
+          export IP6_CONFIG=static
+          export IP6_ADDRESS=2001:db8:1::10/64
+          export IP6_GW=fe80::1
+          export IP6_DNS1=2001:db8:1::53
+          export IP6_DNS2=2001:db8:2::53
+          EOF
+
+      Static addresses on both families::
+
+          cat>/etc/inithooks.conf<<EOF
+          export IP6_CONFIG=static
+          export IP6_ADDRESS=2001:db8:1::10/64
+          export IP6_GW=2001:db8:1::1
+          export IP6_DNS1=2001:db8:1::53
+          export IP_CONFIG=static
+          export IP_ADDRESS=192.0.2.10
+          export IP_NETMASK=255.255.255.0
+          export IP_GW=192.0.2.1
+          export IP_DNS1=192.0.2.53
+          EOF
 
     - DH_BITS refers to the number of bits used when generating Diffie-Hellman
       parameters used in TLS (i.e. HTTPS) _`Diffie-Hellman key exchange`. It

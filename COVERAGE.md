@@ -18,6 +18,22 @@ project-authored code, with the inherited modules without tests omitted in
 `pyproject.toml` until their tests land. Both thresholds are only ever
 raised. The sections that follow record the state before the merges.
 
+## Branch feat/ip6-preseed: IPv6 preseed keys in 01ipconfig (2026-09-26)
+
+Adds `IP6_CONFIG`, `IP6_ADDRESS`, `IP6_GW`, `IP6_DNS1` and `IP6_DNS2` to
+`firstboot.d/01ipconfig`, with the IPv6 checks and rendering as pure
+functions in `lib/ipconfig.sh`. `tests/test-ipconfig.bats` grows from 27
+to 64 tests (105 bats over the six files), one per new branch: every
+refusal message of the IPv6 checks, static with and without gateway and
+nameservers, IPv4 in an IPv6 field, an invalid `IP6_CONFIG`, the dhcp
+default, IPv4 static together with IPv6 static, the unchanged short
+circuit over both stanzas, and a byte for byte comparison of the file an
+`IP_*` only preseed produced before the change. Measured locally under
+kcov 43 with bats 1.11: lib/ipconfig.sh 72/72 (was 25/25), 01ipconfig
+29/29 (was 23/23), the other files unchanged, total 99.55 (was 99.40).
+The lowest file is still lib/init-fence.sh at 98.44, so the shell gate
+stays at 98. Python is untouched.
+
 ## Baseline before the merges: 0 percent measured on upstream master
 
 Upstream has one file under `tests/`, `test-simplehttpd.sh` (4 lines). It
