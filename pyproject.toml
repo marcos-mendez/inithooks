@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+include = ["libinithooks/declarative.py", "bin/declarative.py"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true

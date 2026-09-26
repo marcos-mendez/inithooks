@@ -1,0 +1,29 @@
+#!/bin/bash -e
+
+# translate the declarative instance description into the inithooks conf
+# file, so that every later hook reads the values it already reads today
+# - runs before everything else and is a no-op unless the file exists
+
+INITHOOKS_DEFAULT="${INITHOOKS_DEFAULT:-/etc/default/inithooks}"
+# shellcheck source=default/inithooks
+source "$INITHOOKS_DEFAULT"
+
+INITHOOKS_DECL="${INITHOOKS_DECL:-/etc/inithooks.yaml}"
+export INITHOOKS_LOGFILE
+
+if [[ -n "$_TURNKEY_INIT" ]]; then
+    # turnkey-init is an explicit interactive run
+    exit 0
+fi
+
+if [[ ! -e "$INITHOOKS_DECL" ]]; then
+    exit 0
+fi
+
+if [[ -e "$INITHOOKS_CONF" ]] && grep -q '[^[:space:]]' "$INITHOOKS_CONF"; then
+    echo "warning: $INITHOOKS_CONF is not empty, ignoring $INITHOOKS_DECL" >&2
+    exit 0
+fi
+
+"$INITHOOKS_PATH/bin/declarative.py" --apply \
+    --conf="$INITHOOKS_CONF" "$INITHOOKS_DECL"

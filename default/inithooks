@@ -1,4 +1,5 @@
 INITHOOKS_CONF=/etc/inithooks.conf
+INITHOOKS_DECL=/etc/inithooks.yaml
 INITHOOKS_PATH=/usr/lib/inithooks
 INITHOOKS_LOGFILE=/var/log/inithooks.log
 
