@@ -4,6 +4,22 @@ testpaths = ["tests"]
 [tool.coverage.run]
 branch = true
 include = ["libinithooks/declarative.py", "bin/declarative.py"]
+# The reusable workflow runs coverage with --source=libinithooks,bin, and
+# coverage.py ignores "include" when a source is given, so the inherited
+# modules that have no tests yet are omitted here as well. Each entry goes
+# when its tests land (COVERAGE.md, plan to reach 90 percent per file).
+omit = [
+    "libinithooks/__init__.py",
+    "libinithooks/dialog_wrapper.py",
+    "libinithooks/inithooks_cache.py",
+    "libinithooks/inithooks_log.py",
+    "bin/hubservices.py",
+    "bin/reboot-ask.py",
+    "bin/secalerts.py",
+    "bin/secupdates-ask.py",
+    "bin/setpass.py",
+    "bin/simplehttpd.py",
+]
 
 [tool.coverage.report]
 fail_under = 95

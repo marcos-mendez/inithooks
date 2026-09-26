@@ -4,7 +4,21 @@ Measured on 2026-09-24 against upstream master (33c43b8), following the
 project decision 0003 (90 percent floor per repository, 95 percent for every
 file our changes touch).
 
-## Baseline: 0 percent measured on upstream master
+## Measured baseline on master: shell 98 percent, Python 99 percent (2026-09-26)
+
+Pull requests #1 to #4 merged on 2026-09-26 (merge commits 4e09d1e, a20a94a,
+8f77b85, e1334073). `tests/coverage.sh` under kcov 43 measures 68 bats over
+six files: 01ipconfig 23/23, lib/ipconfig.sh 25/25, 29tagid 19/19,
+lib/tagid.sh 8/8, turnkey-init-fence 28/28, lib/init-fence.sh 63/64 (98.44,
+the lowest file; total 99.40). The shell gate is set to 98, the lowest file
+rounded down. `coverage run --branch --source=libinithooks,bin -m pytest`
+measures 146 tests: libinithooks/declarative.py 100 percent,
+bin/declarative.py 99 percent, total 99; the Python gate is 95, the bar for
+project-authored code, with the inherited modules without tests omitted in
+`pyproject.toml` until their tests land. Both thresholds are only ever
+raised. The sections that follow record the state before the merges.
+
+## Baseline before the merges: 0 percent measured on upstream master
 
 Upstream has one file under `tests/`, `test-simplehttpd.sh` (4 lines). It
 starts `bin/simplehttpd.py` on the loopback ports and prints the URL; it
