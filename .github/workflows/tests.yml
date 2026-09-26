@@ -1,7 +1,12 @@
-# Coverage gate for inithooks. Threshold 0: nothing is measured on master
-# (COVERAGE.md, upstream tests/ holds only a manual launcher). The bats suites
-# and tests/coverage.sh arrive with the fix/* branches and the pytest suite
-# with feat/declarative-instance; raise the threshold as they merge.
+# Coverage gates for inithooks, one per language (docs/ci-cd.md):
+#   tests / coverage   shell: tests/coverage.sh under kcov, 98 percent, the
+#                      number measured on master (lowest file lib/init-fence.sh
+#                      63 of 64 lines, COVERAGE.md "measured baseline")
+#   python / coverage  pytest under coverage.py over libinithooks and bin,
+#                      95 percent, the bar for project-authored code; the
+#                      inherited modules without tests are omitted in
+#                      pyproject.toml until their tests land
+# Both are required checks on master. Thresholds are only ever raised.
 name: tests
 on:
   pull_request:
@@ -11,4 +16,10 @@ jobs:
   tests:
     uses: keel-linux/.github/.github/workflows/test-shell.yml@main
     with:
-      threshold: 0
+      threshold: 98
+  python:
+    uses: keel-linux/.github/.github/workflows/test-python.yml@main
+    with:
+      threshold: 95
+      package: libinithooks,bin
+      tests: tests
