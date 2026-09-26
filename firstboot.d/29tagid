@@ -1,30 +1,41 @@
 #!/bin/bash
 
+# tag the init-fence index page with the appliance name, version and build;
+# parsing and rendering live in lib/tagid.sh
+
 [ -n "$_TURNKEY_INIT" ] && exit 0
 
-APP_NAME=$(perl -pe 's/^turnkey-//; s/-[^-]+(-[^-]+){2}$//' < /etc/turnkey_version)
-VERSION=$(perl -pe 's/.*-([^-]+(-[^-]+){2})$/\1/' < /etc/turnkey_version)
-BUILD=$(perl -ne 'chomp; s/.*\((.*)\).*/\1/; s/^\S+ ?//; $tags=$_ ? $_ : "iso"; system("echo $tags | xargs -n 1 | sort -u | xargs echo | sed \"s/ /-/g\"");' < /etc/apt/apt.conf.d/01turnkey)
+INITHOOKS_PATH="${INITHOOKS_PATH:-/usr/lib/inithooks}"
+INITFENCE_DEFAULT="${INITFENCE_DEFAULT:-/etc/default/turnkey-init-fence}"
+TURNKEY_VERSION_FILE="${TURNKEY_VERSION_FILE:-/etc/turnkey_version}"
+APT_CONF_TURNKEY="${APT_CONF_TURNKEY:-/etc/apt/apt.conf.d/01turnkey}"
+
+# shellcheck source=lib/tagid.sh
+source "$INITHOOKS_PATH/lib/tagid.sh"
+
+APP_NAME=$(tagid_app_name "$(< "$TURNKEY_VERSION_FILE")")
+VERSION=$(tagid_version "$(< "$TURNKEY_VERSION_FILE")")
+BUILD=$(tagid_build "$(< "$APT_CONF_TURNKEY")")
 
 ### initfence 
 
 # shellcheck source=default/turnkey-init-fence
-source /etc/default/turnkey-init-fence
+source "$INITFENCE_DEFAULT"
 
 if [[ ! -d "$HTDOCS" ]]; then
     mkdir -p "$(dirname "$HTDOCS")"
-    cp -R "/usr/lib/inithooks/turnkey-init-fence/htdocs" "$(dirname "$HTDOCS")"
+    cp -R "$INITHOOKS_PATH/turnkey-init-fence/htdocs" "$(dirname "$HTDOCS")"
 fi
 
 INITFENCE_INDEX="$HTDOCS/index.html"
 sed -i "s|@APP_NAME@|$APP_NAME|" $INITFENCE_INDEX
 
-if ! grep -q ajax.turnkeylinux.org $INITFENCE_INDEX; then
-    cat>>$INITFENCE_INDEX<<EOF
-<script src="https://ajax.turnkeylinux.org/initfence/$BUILD/$VERSION/$APP_NAME.js" async></script>
-<script src="https://ajax.turnkeylinux.org/initfence/$BUILD/$VERSION/$APP_NAME.direct" async></script>
-EOF
+if ! tagid_is_tagged "$INITFENCE_INDEX"; then
+    tagid_render_scripts "$BUILD" "$VERSION" "$APP_NAME" >> "$INITFENCE_INDEX"
 fi
 
-# reload init-fence to pick up the updated index
-systemctl reload turnkey-init-fence
+# reload init-fence to pick up the updated index (if it is not running there
+# is nothing to reload; it reads the index when it starts)
+if systemctl is-active --quiet turnkey-init-fence; then
+    systemctl reload turnkey-init-fence
+fi
