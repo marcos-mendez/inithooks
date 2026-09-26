@@ -2,6 +2,7 @@ default/*                               /etc/default
 bin/*                                   /usr/lib/inithooks/bin
 firstboot.d/*                           /usr/lib/inithooks/firstboot.d
 everyboot.d/*                           /usr/lib/inithooks/everyboot.d
+lib/*                                   /usr/lib/inithooks/lib
 run                                     /usr/lib/inithooks
 rsyslog.d/*                             /etc/rsyslog.d
 

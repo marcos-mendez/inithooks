@@ -1,0 +1,14 @@
+# Coverage gate for inithooks. Threshold 0: nothing is measured on master
+# (COVERAGE.md, upstream tests/ holds only a manual launcher). The bats suites
+# and tests/coverage.sh arrive with the fix/* branches and the pytest suite
+# with feat/declarative-instance; raise the threshold as they merge.
+name: tests
+on:
+  pull_request:
+  push:
+    branches: [master]
+jobs:
+  tests:
+    uses: keel-linux/.github/.github/workflows/test-shell.yml@main
+    with:
+      threshold: 0
