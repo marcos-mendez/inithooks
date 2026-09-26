@@ -18,13 +18,24 @@ if [[ -e $INITHOOKS_CONF ]]; then
     source $INITHOOKS_CONF
 fi
 
-if [[ -z "$IP_CONFIG" ]]; then
-    # exit cleanly if env var not set
+if [[ -z "$IP_CONFIG" && -z "$IP6_CONFIG" ]]; then
+    # exit cleanly if neither env var is set
     exit 0
 fi
 
+# with only the IP6_* keys set, IPv4 stays as the image ships it
+IP_CONFIG=${IP_CONFIG:-dhcp}
+
 ipconfig_valid_config "$IP_CONFIG" \
     || fatal "Invalid: IP_CONFIG='$IP_CONFIG' - valid values: manual|static|dhcp"
+
+[[ -z "$IP6_CONFIG" ]] || ipconfig_valid_config "$IP6_CONFIG" \
+    || fatal "Invalid: IP6_CONFIG='$IP6_CONFIG' - valid values: manual|static|dhcp"
+
+if [[ "$IP6_CONFIG" == "static" ]]; then
+    error=$(ipconfig_check_static6 "$IP6_ADDRESS" "$IP6_GW" "$IP6_DNS1" "$IP6_DNS2") \
+        || fatal "$error"
+fi
 
 if ! [[ -e $INTERFACES ]]; then
     fatal "$INTERFACES file not found"
@@ -32,8 +43,8 @@ fi
 
 IP_IFACE=$(ipconfig_iface "$(turnkey-version -n)")
 
-# if IP_CONFIG is not changed avoid a interface redundant reconfiguration
-if ipconfig_unchanged "$INTERFACES" "$IP_IFACE" "$IP_CONFIG"; then
+# if the config is not changed avoid a interface redundant reconfiguration
+if ipconfig_unchanged "$INTERFACES" "$IP_IFACE" "$IP_CONFIG" "$IP6_CONFIG"; then
     exit 0
 fi
 
@@ -51,7 +62,12 @@ if [[ "$IP_CONFIG" == "static" ]]; then
         >> "$INTERFACES"
 fi
 
-ipconfig_render_inet6 "$IP_IFACE" "$HOST_NAME" >> "$INTERFACES"
+ipconfig_render_inet6 "$IP_IFACE" "$HOST_NAME" "$IP6_CONFIG" >> "$INTERFACES"
+
+if [[ "$IP6_CONFIG" == "static" ]]; then
+    ipconfig_render_static6 "$IP6_ADDRESS" "$IP6_GW" "$IP6_DNS1" "$IP6_DNS2" \
+        >> "$INTERFACES"
+fi
 
 ifup --all --exclude=lo
 
