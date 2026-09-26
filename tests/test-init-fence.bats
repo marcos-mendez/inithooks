@@ -69,6 +69,13 @@ EOT
     source "$REPO/lib/init-fence.sh"
 }
 
+teardown() {
+    # start_mini_server leaves the htdocs read-only (0555 directories, 0444
+    # files); give write permission back so bats can remove the scratch tree
+    # when the tests run as a regular user
+    chmod -R u+w "$BATS_TEST_TMPDIR" 2>/dev/null || true
+}
+
 # ---------------------------------------------------------------- library
 
 @test "htdocs is the writable copy when it exists" {
