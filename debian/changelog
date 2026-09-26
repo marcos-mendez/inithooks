@@ -1,0 +1,23 @@
+inithooks (2.3.6+keel1) trixie; urgency=low
+
+  * 01ipconfig: append the static options instead of overwriting the file.
+  * 01ipconfig: keep the confconsole header and the IPv6 stanza when rewriting.
+  * 01ipconfig: add the IP6_CONFIG, IP6_ADDRESS, IP6_GW, IP6_DNS1 and IP6_DNS2
+    preseed keys.
+  * 29tagid: only reload turnkey-init-fence when it is running.
+  * turnkey-init-fence: skip the REDIRECT rule when the nat table is unavailable.
+  * Add the firstboot hook 00declarative: renders /etc/inithooks.conf from
+    /etc/inithooks.yaml before any other hook, with bin/declarative.py
+    (--check, --render, --apply) as the reader; depend on python3-yaml.
+  * Add lib/ipconfig.sh, lib/tagid.sh and lib/init-fence.sh, the shell
+    functions of the hooks, installed under /usr/lib/inithooks/lib.
+  * Add the tests: bats for the shell hooks, pytest for the declarative
+    reader, with coverage checked on every pull request.
+
+ -- Keel Linux maintainers <admin@keellinux.org>  Sat, 26 Sep 2026 14:58:05 +0000
+
+inithooks (2.3.6) UNRELEASED; urgency=low
+
+  * undocumented
+
+ --  Stefan Davis <stefan@turnkeylinux.org>  Wed, 19 Aug 2026 05:35:20 +0000
